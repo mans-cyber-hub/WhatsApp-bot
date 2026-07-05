@@ -2,16 +2,18 @@ const express = require('express');
 const app = express();
 app.use(express.json());
 
-// API Key yako ya Gemini ikiwa imekaa sehemu yake safi kabisa
+// API Key yako ya Gemini kutoka kwenye Environment Variables ya Render
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-
 app.post('/webhook', async (req, res) => {
-    // AutoResponder inatuma meseji ya mtu kupitia req.body.query
-    const userMessage = req.body.query;
+    // AutoResponder inatuma meseji kupitia req.body.query au req.body.message
+    const userMessage = req.body.query || req.body.message;
 
     if (!userMessage) {
-        return res.json({ replies: [{ text: "Mwanangu, sijaona ujumbe wowote hapa!" }] });
+        return res.json({
+            message: "Mwanangu, sijaona ujumbe wowote hapa!",
+            replies: [{ text: "Mwanangu, sijaona ujumbe wowote hapa!", message: "Mwanangu, sijaona ujumbe wowote hapa!" }]
+        });
     }
 
     try {
@@ -20,34 +22,39 @@ app.post('/webhook', async (req, res) => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                contents: [{ 
-                    parts: [{ 
-                        text: `Wewe ni msaidizi wa kinyamwezi sana na una akili nyingi. Jibu ujumbe huu wa mshkaji wako kwa lugha ya Kiswahili ya mtaani, changamka, uwe na vibe na ueleweke haraka: ${userMessage}` 
-                    }] 
+                contents: [{
+                    parts: [{
+                        text: `Wewe ni msaidizi wa kinyamwezi sana na una akili nyingi. Jibu ujumbe huu wa mshkaji wako kwa lugha ya Kiswahili ya mtaani, changamka, uwe na vibe na ueleweke haraka: ${userMessage}`
+                    }]
                 }]
-            })
+              })
         });
 
         const data = await response.json();
-        
+
         // Hakikisha jibu limepatikana kutoka Gemini kabla ya kutuma
-        if (data.candidates && data.candidates[0].content.parts[0].text) {
+        if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0].text) {
             const aiReply = data.candidates[0].content.parts[0].text;
             
-            // Muundo rasmi wa JSON unaorudishwa kwa AutoResponder
+            // Muundo mpya wa kijanja unaokubalika na mifumo yote ya AutoResponder
             return res.json({
-                replies: [
-                    { text: aiReply }
-                ]
+                message: aiReply,
+                replies: [{ text: aiReply, message: aiReply }]
             });
         } else {
-            return res.json({ replies: [{ text: "Dah, kuna shida kidogo imetokea kwenye mfumo wa AI." }] });
+            const errorReply = "Dah, kuna shida kidogo imetokea kwenye mfumo wa AI.";
+            return res.json({
+                message: errorReply,
+                replies: [{ text: errorReply, message: errorReply }]
+            });
         }
 
     } catch (error) {
         console.error("Error:", error);
-        return res.json({ 
-            replies: [{ text: "Dah mshkaji wangu, ubongo umepata hitilafu kidogo, nicheki baadae!" }] 
+        const catchReply = "Dah mshkaji wangu, ubongo umepata hitilafu kidogo, nicheki baadae!";
+        return res.json({
+            message: catchReply,
+            replies: [{ text: catchReply, message: catchReply }]
         });
     }
 });
@@ -55,3 +62,4 @@ app.post('/webhook', async (req, res) => {
 // Port itakayotumika kuwasha server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server ya kinyamwezi ipo tayari kwenye port ${PORT}`));
+            
