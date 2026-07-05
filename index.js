@@ -2,22 +2,27 @@ const express = require('express');
 const app = express();
 app.use(express.json());
 
+// Mfumo utasoma ufunguo wako wa AQ. kutoka Render Environment
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 app.post('/webhook', async (req, res) => {
+    // AutoResponder inatuma meseji kupitia req.body.query au req.body.message
     const userMessage = req.body.query || req.body.message;
 
     if (!userMessage) {
         return res.json({
-            message: "Mwanangu, sijaona ujumbe wowote hapa!",
-            replies: [{ text: "Mwanangu, sijaona ujumbe wowote hapa!", message: "Mwanangu, sijaona ujumbe wowote hapa!" }]
+            message: "Niaje mwanangu! Sijaona ujumbe wowote hapa.",
+            replies: [{ text: "Niaje mwanangu! Sijaona ujumbe wowote hapa." }]
         });
     }
 
     try {
+        // Tunatuma ombi kwenda kwa Gemini tukitumia API Key yako mpya
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify({
                 contents: [{
                     parts: [{
@@ -28,39 +33,32 @@ app.post('/webhook', async (req, res) => {
         });
 
         const data = await response.json();
-        
-        // HUU NDIO UPELELEZI: Itaandika kila kitu kwenye Render Logs tujue shida ni nini
-        console.log("--- JIBU KUTOKA GOOGLE GEMINI ---");
-        console.log(JSON.stringify(data));
-        console.log("---------------------------------");
 
-        if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0].text) {
+        if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
             const aiReply = data.candidates[0].content.parts[0].text;
+            
+            // Muundo unaokubalika na toleo lolote lile la AutoResponder
             return res.json({
                 message: aiReply,
                 replies: [{ text: aiReply, message: aiReply }]
             });
         } else {
-            // Kama Gemini imetuma makosa (Error), tutarudisha ujumbe huu
-            let customError = "Dah, kuna shida kidogo imetokea kwenye mfumo wa AI.";
-            if (data.error) {
-                customError = `Gemini Error: ${data.error.message}`;
-            }
+            console.log("Google Response Error:", JSON.stringify(data));
             return res.json({
-                message: customError,
-                replies: [{ text: customError, message: customError }]
+                message: "Dah mwanangu, kuna hitilafu kidogo upande wa AI. Hebu nicheki baadae.",
+                replies: [{ text: "Dah mwanangu, kuna hitilafu kidogo upande wa AI. Hebu nicheki baadae." }]
             });
         }
 
     } catch (error) {
         console.error("Catch Error:", error);
-        const catchReply = "Dah mshkaji wangu, ubongo umepata hitilafu kidogo, nicheki baadae!";
         return res.json({
-            message: catchReply,
-            replies: [{ text: catchReply, message: catchReply }]
+            message: "Ubongo umepata hitilafu kidogo, nicheki baadae mwanangu!",
+            replies: [{ text: "Ubongo umepata hitilafu kidogo, nicheki baadae mwanangu!" }]
         });
     }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server ya kinyamwezi ipo tayari kwenye port ${PORT}`));
+            
